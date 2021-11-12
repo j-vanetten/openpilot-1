@@ -45,7 +45,7 @@ class CarState(CarStateBase):
     ret.steeringRateDeg = cp.vl["STEERING"]["STEERING_RATE"]
     ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(cp.vl["GEAR"]["PRNDL"], None))
 
-    ret.cruiseState.enabled = cp.vl["ACC_2"]["ACC_STATUS_2"] == 7  # ACC is green.
+    ret.cruiseState.enabled = cp.vl["ACC_2"]["ACC_ENABLED"] == 1  # ACC is green.
     ret.cruiseState.available = ret.cruiseState.enabled  # FIXME: for now same as enabled
     ret.cruiseState.speed = cp.vl["DASHBOARD"]["ACC_SPEED_CONFIG_KPH"] * CV.KPH_TO_MS
     # CRUISE_STATE is a three bit msg, 0 is off, 1 and 2 are Non-ACC mode, 3 and 4 are ACC mode, find if there are other states too
@@ -54,8 +54,8 @@ class CarState(CarStateBase):
     ret.steeringTorque = cp.vl["EPS_STATUS"]["TORQUE_DRIVER"]
     ret.steeringTorqueEps = cp.vl["EPS_STATUS"]["TORQUE_MOTOR"]
     ret.steeringPressed = abs(ret.steeringTorque) > STEER_THRESHOLD
-    steer_state = cp.vl["EPS_STATUS"]["LKAS_STATE"]
-    ret.steerError = steer_state == 4 or (steer_state == 0 and ret.vEgo > self.CP.minSteerSpeed)
+    self.lkas_active = cp.vl["EPS_STATUS"]["LKAS_ACTIVE"] == 1
+    ret.steerError = cp.vl["EPS_STATUS"]["LKAS_STEER_FAULT"] == 1 or (not self.lkas_active and ret.vEgo > self.CP.minSteerSpeed)
 
     ret.genericToggle = bool(cp.vl["STEERING_LEVERS"]["HIGH_BEAM_FLASH"])
 
@@ -65,7 +65,6 @@ class CarState(CarStateBase):
 
     self.lkas_counter = cp_cam.vl["LKAS_COMMAND"]["COUNTER"]
     self.lkas_car_model = cp_cam.vl["LKAS_HUD"]["CAR_MODEL"]
-    self.lkas_status_ok = cp_cam.vl["LKAS_HEARTBIT"]["LKAS_STATUS_OK"]
 
     return ret
 
@@ -89,13 +88,14 @@ class CarState(CarStateBase):
       ("STEER_ANGLE", "STEERING", 0),
       ("STEERING_RATE", "STEERING", 0),
       ("TURN_SIGNALS", "STEERING_LEVERS", 0),
-      ("ACC_STATUS_2", "ACC_2", 0),
+      ("ACC_ENABLED", "ACC_2", 0),
       ("HIGH_BEAM_FLASH", "STEERING_LEVERS", 0),
       ("ACC_SPEED_CONFIG_KPH", "DASHBOARD", 0),
       ("CRUISE_STATE", "DASHBOARD", 0),
       ("TORQUE_DRIVER", "EPS_STATUS", 0),
       ("TORQUE_MOTOR", "EPS_STATUS", 0),
-      ("LKAS_STATE", "EPS_STATUS", 1),
+      ("LKAS_ACTIVE", "EPS_STATUS", 1),
+      ("LKAS_STEER_FAULT", "EPS_STATUS", 1),
       ("COUNTER", "EPS_STATUS", -1),
       ("TRACTION_OFF", "TRACTION_BUTTON", 0),
       ("SEATBELT_DRIVER_UNLATCHED", "SEATBELT_STATUS", 0),
@@ -133,11 +133,9 @@ class CarState(CarStateBase):
       # sig_name, sig_address, default
       ("COUNTER", "LKAS_COMMAND", -1),
       ("CAR_MODEL", "LKAS_HUD", -1),
-      ("LKAS_STATUS_OK", "LKAS_HEARTBIT", -1)
     ]
     checks = [
       ("LKAS_COMMAND", 100),
-      ("LKAS_HEARTBIT", 10),
       ("LKAS_HUD", 4),
     ]
 
