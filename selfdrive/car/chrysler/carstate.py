@@ -4,10 +4,7 @@ from opendbc.can.can_define import CANDefine
 from selfdrive.config import Conversions as CV
 from selfdrive.car.interfaces import CarStateBase
 from selfdrive.car.chrysler.values import DBC, STEER_THRESHOLD
-from common.cached_params import CachedParams
-from common.op_params import opParams
 from selfdrive.car.chrysler.values import CAR
-import numpy as np
 
 ButtonType = car.CarState.ButtonEvent.Type
 
@@ -28,8 +25,6 @@ class CarState(CarStateBase):
     super().__init__(CP)
     can_define = CANDefine(DBC[CP.carFingerprint]["pt"])
     self.shifter_values = can_define.dv["GEAR"]["PRNDL"]
-    self.cachedParams = CachedParams()
-    self.opParams = opParams()
     self.lkasHeartbit = None
     self.dashboard = None
     self.speedRequested = 0
@@ -41,7 +36,7 @@ class CarState(CarStateBase):
     self.hybrid = CP.carFingerprint in (CAR.PACIFICA_2017_HYBRID, CAR.PACIFICA_2018_HYBRID, CAR.PACIFICA_2019_HYBRID)
 
   def update(self, cp, cp_cam):
-    min_steer_check = self.opParams.get('steer.checkMinimum')
+    min_steer_check = False
 
     ret = car.CarState.new_message()
 
